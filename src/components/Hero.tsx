@@ -32,12 +32,12 @@ const Hero = () => {
     }, []);
 
     const stats = [
-        { label: "Visitors", value: "4000+", icon: "👥" },
-        { label: "Startups", value: "2000+", icon: "🚀" },
+        { label: "Visitors", value: "10000+", icon: "👥" },
+        { label: "Startups", value: "1000+", icon: "🚀" },
         { label: "Investors", value: "100+", icon: "💰" },
         { label: "Mentors", value: "100+", icon: "🧠" },
-        { label: "Speakers", value: "100+", icon: "🎙️" },
-        { label: "Exhibitors", value: "100+", icon: "🏢" }
+        { label: "Speakers", value: "200+", icon: "🎙️" },
+        { label: "Exhibitors", value: "50+", icon: "🏢" }
     ];
 
     return (

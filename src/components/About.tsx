@@ -37,7 +37,7 @@ const About = () => {
                         connecting promising teams with funding, mentorship, and
                         strategic partners.
                     </p>
-                    <p className="tagline">"Shaping Viksit Bharat's Brightest Minds"</p>
+                    <p className="tagline">"Raising Minds For Global Impact"</p>
                 </div>
             </div>
         </section>

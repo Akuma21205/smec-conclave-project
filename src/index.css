@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ===== CSS Variables & Design System ===== */
 :root {
     /* Primary Colors - From Brochure */
@@ -1001,6 +1005,40 @@ a {
     margin-bottom: var(--space-md);
 }
 
+.track-filters {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+    flex-wrap: wrap;
+}
+
+.track-badge {
+    background: transparent;
+    font-size: 0.9rem;
+    padding: 0.5rem 1.25rem;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: var(--font-primary);
+}
+
+.track-badge.active {
+    background: var(--color-gold);
+    color: var(--color-bg-primary);
+    border-color: var(--color-gold);
+    font-weight: 600;
+    box-shadow: 0 0 15px rgba(212, 168, 83, 0.4);
+}
+
+.track-badge:hover:not(.active) {
+    border-color: var(--color-gold);
+    color: var(--color-gold);
+    transform: translateY(-2px);
+}
+
 .contact-item {
     display: flex;
     align-items: center;
@@ -1190,4 +1228,48 @@ a {
 .animate-in {
     opacity: 1 !important;
     transform: translateY(0) !important;
+}
+
+/* ===== Global Scroll Animations ===== */
+/* Initial state for animating elements */
+.fade-init {
+    opacity: 0;
+    transform: translateY(50px);
+    transition: opacity 0.8s ease-out, transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    will-change: opacity, transform;
+}
+
+/* State when visible */
+.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===== 3D Card Effects ===== */
+.glass-card,
+.pillar-card,
+.stat-card,
+.event-card {
+    transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+.glass-card:hover,
+.pillar-card:hover,
+.stat-card:hover,
+.event-card:hover {
+    transform: translateY(-10px) rotateX(2deg) rotateY(2deg);
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(212, 168, 83, 0.2);
+    border-color: rgba(212, 168, 83, 0.5);
+    z-index: 10;
+}
+
+/* Ensure container has perspective */
+.pillars-grid,
+.hero-stats-grid,
+.agenda-container {
+    perspective: 1000px;
 }
