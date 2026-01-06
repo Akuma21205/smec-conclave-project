@@ -1,0 +1,56 @@
+{
+  "registrations": [
+    {
+      "id": "1766210636324",
+      "fullName": "Test User",
+      "phoneNumber": "1234567890",
+      "email": "test@example.com",
+      "gender": "male",
+      "dateOfBirth": "2000-01-01",
+      "profession": "student",
+      "collegeName": "Test University",
+      "registeredAt": "2025-12-20T06:03:56.324Z"
+    },
+    {
+      "id": "1766211042520",
+      "fullName": "shashank",
+      "phoneNumber": "7977424715",
+      "email": "shashank212005@gmail.com",
+      "gender": "male",
+      "dateOfBirth": "2006-12-02",
+      "profession": "student",
+      "collegeName": "St. Martin's Engineering sollege",
+      "registeredAt": "2025-12-20T06:10:42.520Z"
+    },
+    {
+      "id": "1766221853728",
+      "fullName": "Jane Smith",
+      "phoneNumber": "8765432109",
+      "email": "jane.smith@test.com",
+      "password": "$2b$10$/EtDScWXGElxd6.5kSWvJ.30T6uwpKnkq6pBa0Lc5eNMd8UbFrvs2",
+      "gender": "female",
+      "dateOfBirth": "1992-05-20",
+      "country": "India",
+      "state": "Telangana",
+      "pincode": "500001",
+      "profession": "student",
+      "collegeName": "Hyderabad University",
+      "registeredAt": "2025-12-20T09:10:53.732Z"
+    },
+    {
+      "id": "1766222864762",
+      "fullName": "test_name",
+      "phoneNumber": "7977424715",
+      "email": "test_name@gmail.com",
+      "password": "$2b$10$XRnZIPBtoNK55fVP/7ZiHOujgL/LXuVk8vEoCYVz1/uMDd/143s3u",
+      "gender": "male",
+      "dateOfBirth": "2006-05-02",
+      "country": "India",
+      "state": "Telangana",
+      "pincode": "501707",
+      "profession": "student",
+      "collegeName": "St. martin's engineering college",
+      "registeredAt": "2025-12-20T09:27:44.762Z"
+    }
+  ]
+}
