@@ -49,7 +49,7 @@ app.post('/send-email', async (req, res) => {
 
     const mailOptions = {
         from: '"SMEC Global Innovators Conclave" <' + process.env.EMAIL_USER + '>',
-        to: email, // Send to the user who subscribed
+        to: email,
         subject: 'Welcome to the SMEC Global Innovators Conclave!',
         html: `
             <div style="font-family: Arial, sans-serif; color: #333;">
@@ -70,7 +70,7 @@ app.post('/send-email', async (req, res) => {
         attachments: [
             {
                 filename: 'SMEC_Conclave_Brochure.pdf',
-                path: path.join(__dirname, 'public', 'brochure.pdf'), // Ensure this file exists
+                path: path.join(__dirname, 'public', 'brochure.pdf'),
                 contentType: 'application/pdf'
             }
         ]
@@ -104,13 +104,22 @@ app.post('/register', async (req, res) => {
     }
 
     try {
-        // Create user in Supabase Auth
+        // Create user in Supabase Auth (requires email verification)
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: email,
             password: password,
-            email_confirm: true, // Set to true to require email verification
+            email_confirm: false, // Require email verification
             user_metadata: {
-                full_name: fullName
+                full_name: fullName,
+                phone: phoneNumber,
+                gender: gender,
+                date_of_birth: dateOfBirth,
+                country: country,
+                state: state,
+                pincode: pincode,
+                profession: profession,
+                college_name: profession === 'student' ? collegeName : null,
+                company_name: profession === 'professional' ? companyName : null
             }
         });
 
@@ -147,10 +156,21 @@ app.post('/register', async (req, res) => {
             return res.status(500).json({ error: 'Failed to create user profile' });
         }
 
+        // Manually trigger verification email
+        try {
+            const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
+            if (emailError) {
+                console.error('Error sending verification email:', emailError);
+            }
+        } catch (emailErr) {
+            console.error('Failed to send verification email:', emailErr);
+        }
+
         console.log('Registration successful:', email);
         res.status(200).json({
-            message: 'Registration successful! Please check your email to verify your account.',
-            requiresEmailVerification: false
+            message: 'Registration successful! Please check your email for the verification code.',
+            email: email,
+            requiresEmailVerification: true
         });
     } catch (error) {
         console.error('Error during registration:', error);
@@ -248,6 +268,65 @@ app.post('/reset-password-request', async (req, res) => {
     } catch (error) {
         console.error('Error during password reset request:', error);
         res.status(500).json({ error: 'Failed to send reset email' });
+    }
+});
+
+// Email verification endpoint
+app.post('/verify-email', async (req, res) => {
+    const { email, token } = req.body;
+
+    if (!email || !token) {
+        return res.status(400).json({ error: 'Email and verification code are required' });
+    }
+
+    try {
+        // Verify the OTP token
+        const { data, error } = await supabaseAdmin.auth.verifyOtp({
+            email: email,
+            token: token,
+            type: 'email'
+        });
+
+        if (error) {
+            console.error('Verification error:', error);
+            return res.status(400).json({ error: 'Invalid or expired verification code' });
+        }
+
+        console.log('Email verified successfully:', email);
+        res.status(200).json({
+            message: 'Email verified successfully! You can now login.',
+            verified: true
+        });
+    } catch (error) {
+        console.error('Error during verification:', error);
+        res.status(500).json({ error: 'Verification failed' });
+    }
+});
+
+// Resend verification code endpoint
+app.post('/resend-verification', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        // Resend the OTP
+        const { error } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'signup',
+            email: email
+        });
+
+        if (error) {
+            console.error('Resend error:', error);
+            return res.status(500).json({ error: 'Failed to resend verification code' });
+        }
+
+        res.status(200).json({ message: 'Verification code resent successfully' });
+    } catch (error) {
+        console.error('Error resending code:', error);
+        res.status(500).json({ error: 'Failed to resend verification code' });
     }
 });
 

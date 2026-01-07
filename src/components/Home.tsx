@@ -5,6 +5,8 @@ import Pillars from './Pillars';
 import Themes from './Themes';
 import Structure from './Structure';
 import Contact from './Contact';
+import TrustedBy from './TrustedBy';
+import ReadyToInnovate from './ReadyToInnovate';
 
 const Home: React.FC = () => {
     useEffect(() => {
@@ -16,11 +18,13 @@ const Home: React.FC = () => {
     return (
         <>
             <Hero />
+            <TrustedBy />
             <About />
             <Pillars />
             <Themes />
             <Structure />
             {/* Agenda removed from here as it has its own page now */}
+            <ReadyToInnovate />
             <Contact />
         </>
     );

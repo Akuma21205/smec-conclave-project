@@ -1,132 +1,103 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Stars, Float, Cloud } from '@react-three/drei';
+import { useRef, useMemo } from 'react';
+import * as THREE from 'three';
 
-gsap.registerPlugin(ScrollTrigger);
-
-// Animated SVG Paths with Stars Component
-const FlowingPathsWithStars: React.FC<{ position: number; scrollSpeed: number }> = ({ 
-    position, 
-    scrollSpeed 
-}) => {
-    const paths = Array.from({ length: 30 }, (_, i) => ({
-        id: i,
-        // Modified path to curve from inside to outside on the top right
-        d: `M${152 + i * 5 * position} ${343 + i * 6}C${
-            312 + i * 5 * position
-        } ${216 + i * 6} ${380 + i * 5 * position} -${189 - i * 6} ${
-            380 + i * 5 * position
-        } -${189 - i * 6}`,
-        color: `rgba(212, 168, 83, ${0.15 + i * 0.015})`, // Gold
-        width: 1.5 + i * 0.08, // Increased base width for better visibility
-    }));
+const Planet = ({ position, size, color, ringColor, rotationSpeed = 0.001 }: { position: [number, number, number], size: number, color: string, ringColor?: string, rotationSpeed?: number }) => {
+    const meshRef = useRef<THREE.Mesh>(null);
+    
+    useFrame(() => {
+        if (meshRef.current) {
+            meshRef.current.rotation.y += rotationSpeed;
+        }
+    });
 
     return (
-        <svg
-            className="absolute inset-0 w-full h-full"
-            viewBox="0 0 696 316"
-            fill="none"
-            preserveAspectRatio="xMidYMid slice"
-        >
-            <defs>
-                {/* Gradient for paths */}
-                <linearGradient id={`pathGradient-${position}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: '#d4a853', stopOpacity: 0.6 }} />
-                    <stop offset="50%" style={{ stopColor: '#9b5de5', stopOpacity: 0.7 }} />
-                    <stop offset="100%" style={{ stopColor: '#4e8fff', stopOpacity: 0.6 }} />
-                </linearGradient>
-            </defs>
-
-            {/* Render paths with enhanced visibility - NO moving dots */}
-            {paths.map((path) => (
-                <motion.path
-                    key={path.id}
-                    d={path.d}
-                    stroke={`url(#pathGradient-${position})`}
-                    strokeWidth={path.width}
-                    strokeOpacity={0.6 + path.id * 0.015} // Increased base opacity
-                    fill="none"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{
-                        pathLength: 1,
-                        opacity: [0.7, 0.9, 0.7],
-                    }}
-                    transition={{
-                        pathLength: { duration: 2, ease: 'easeInOut' },
-                        opacity: {
-                            duration: (3 + Math.random() * 2) / scrollSpeed,
-                            repeat: Number.POSITIVE_INFINITY,
-                            ease: 'easeInOut',
-                        },
-                    }}
-                />
-            ))}
-        </svg>
+        <group position={position}>
+            <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
+                <mesh ref={meshRef}>
+                    <sphereGeometry args={[size, 32, 32]} />
+                    <meshStandardMaterial color={color} roughness={0.7} metalness={0.2} />
+                </mesh>
+                {ringColor && (
+                   <mesh rotation={[-Math.PI / 2, 0.2, 0]}>
+                       <ringGeometry args={[size * 1.4, size * 2, 64]} />
+                       <meshStandardMaterial color={ringColor} side={THREE.DoubleSide} transparent opacity={0.6} />
+                   </mesh>
+                )}
+            </Float>
+        </group>
     );
 };
 
-// Main Background Component
-const BackgroundEffects: React.FC = () => {
-    const [scrollSpeed, setScrollSpeed] = useState(1);
-    const scrollSpeedRef = useRef(1);
-
-    // Scroll-based speed control
-    useEffect(() => {
-        let lastScrollY = window.scrollY;
-        let rafId: number;
-
-        const updateScrollSpeed = () => {
-            const currentScrollY = window.scrollY;
-            const delta = currentScrollY - lastScrollY;
-            
-            // Map velocity to speed multiplier
-            const speedMultiplier = 1 + Math.abs(delta) * 0.1;
-            const targetSpeed = delta > 0 
-                ? Math.min(speedMultiplier, 3) // Cap at 3x when scrolling down
-                : Math.max(1 / speedMultiplier, 0.5); // Slow to 0.5x when scrolling up
-            
-            // Smooth transition to target speed
-            scrollSpeedRef.current = scrollSpeedRef.current + (targetSpeed - scrollSpeedRef.current) * 0.1;
-            setScrollSpeed(scrollSpeedRef.current);
-            
-            lastScrollY = currentScrollY;
-            rafId = requestAnimationFrame(updateScrollSpeed);
-        };
-
-        rafId = requestAnimationFrame(updateScrollSpeed);
-
-        // Reset to normal speed when scroll stops
-        const handleScrollEnd = () => {
-            gsap.to(scrollSpeedRef, {
-                current: 1,
-                duration: 1,
-                ease: 'power2.out',
-                onUpdate: () => setScrollSpeed(scrollSpeedRef.current),
-            });
-        };
-
-        let scrollTimeout: NodeJS.Timeout;
-        const handleScroll = () => {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(handleScrollEnd, 150);
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-
-        return () => {
-            cancelAnimationFrame(rafId);
-            window.removeEventListener('scroll', handleScroll);
-            clearTimeout(scrollTimeout);
-        };
-    }, []);
-
+const CustomNebula = () => {
     return (
-        <div className="background-effects">
-            {/* Animated SVG Paths with Flowing Stars */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <FlowingPathsWithStars position={1} scrollSpeed={scrollSpeed} />
-                <FlowingPathsWithStars position={-1} scrollSpeed={scrollSpeed} />
+        <group>
+             <Cloud opacity={0.3} speed={0.4} width={10} depth={1.5} segments={20} position={[-5, 2, -10]} color="#8a2be2" />
+             <Cloud opacity={0.3} speed={0.4} width={10} depth={1.5} segments={20} position={[5, -2, -15]} color="#4b0082" />
+        </group>
+    )
+}
+
+const BackgroundEffects = () => {
+    return (
+        <div className="fixed inset-0 z-0 bg-black">
+            <Canvas camera={{ position: [0, 0, 20], fov: 45 }}>
+                <color attach="background" args={['#050510']} /> {/* Deep space dark blue/black */}
+                
+                {/* Lighting */}
+                <ambientLight intensity={0.2} />
+                <pointLight position={[10, 10, 10]} intensity={1.5} color="#ffd700" />
+                <pointLight position={[-10, -10, -5]} intensity={0.5} color="#4b0082" />
+
+                {/* Stars */}
+                <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+
+                {/* Nebula Effects */}
+                <CustomNebula />
+
+                {/* Planets */}
+                <Planet 
+                    position={[-8, 3, -5]} 
+                    size={2} 
+                    color="#4169e1" // Royal Blue
+                    rotationSpeed={0.002}
+                />
+                
+                <Planet 
+                    position={[10, -4, -10]} 
+                    size={3.5} 
+                    color="#cd853f" // Peru (Orange-ish)
+                    ringColor="#deb887"
+                    rotationSpeed={0.001}
+                />
+
+                <Planet 
+                     position={[-5, -6, 0]}
+                     size={0.8}
+                     color="#a0a0a0"
+                     rotationSpeed={0.005}
+                />
+
+                {/* Interactive Camera movement could be added here defined by mouse position if requested, 
+                    but sticking to subtle float for now */}
+            </Canvas>
+            
+            {/* Overlay for text readability if needed, though the scene is dark */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/40 pointer-events-none" />
+
+             {/* Preserving the aesthetic UI labels from previous version if they fit the theme, or adapted */}
+             <div className="absolute top-28 left-8 text-white/30 font-mono text-xs tracking-wider mix-blend-screen pointer-events-none">
+                [GIC.2026]
+            </div>
+            <div className="absolute top-28 right-8 text-white/30 font-mono text-xs tracking-wider hidden md:block mix-blend-screen pointer-events-none">
+                [INNOVATE]
+            </div>
+             <div className="absolute bottom-8 left-8 text-white/30 font-mono text-xs tracking-wider hidden md:block mix-blend-screen pointer-events-none">
+                FEB.27-28
+            </div>
+            <div className="absolute bottom-8 right-8 text-white/30 font-mono text-xs tracking-wider hidden md:block mix-blend-screen pointer-events-none">
+                HYDERABAD
             </div>
         </div>
     );

@@ -1,5 +1,22 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, Link } from 'react-router-dom';
+import { InteractiveHoverButton } from './ui/InteractiveHoverButton';
+import { Input, Select, SelectItem, RadioGroup, Radio } from "@heroui/react";
+import { 
+    GraduationCap, 
+    Briefcase, 
+    Check, 
+    ChevronLeft, 
+    CreditCard, 
+    Sparkles,
+    Ticket,
+    Calendar,
+    MapPin,
+    User,
+    Mail,
+    Phone
+} from 'lucide-react';
 
 interface FormData {
     fullName: string;
@@ -12,12 +29,65 @@ interface FormData {
     country: string;
     state: string;
     pincode: string;
-    profession: 'student' | 'professional' | '';
     collegeName: string;
     companyName: string;
 }
 
+type Category = 'student' | 'professional' | null;
+type PassType = 'day1' | 'day2' | 'full' | 'vip' | null;
+
+interface PassOption {
+    id: PassType;
+    name: string;
+    price: number;
+    description: string;
+    features: string[];
+    recommended?: boolean;
+}
+
+const PASS_OPTIONS: Record<'student' | 'professional', PassOption[]> = {
+    student: [
+        {
+            id: 'day1',
+            name: 'Day 1 Pass',
+            price: 499,
+            description: 'Access to Day 1 keynotes and expo.',
+            features: ['Keynote Sessions', 'Innovation Expo', 'Standard Swag Bag']
+        },
+        {
+            id: 'full',
+            name: 'Conclave Pass',
+            price: 899,
+            description: 'Complete 2-day experience.',
+            features: ['All Keynotes & Panels', 'Innovation Expo', 'Workshop Access', 'Premium Swag Bag', 'Certificate'],
+            recommended: true
+        }
+    ],
+    professional: [
+        {
+            id: 'day1',
+            name: 'Day 1 Pass',
+            price: 1499,
+            description: 'Networking and keynotes for Day 1.',
+            features: ['Keynote Sessions', 'Innovation Expo', 'Networking Lunch']
+        },
+        {
+            id: 'full',
+            name: 'Pro Delegate',
+            price: 2499,
+            description: 'Full access + VIP networking.',
+            features: ['All Access', 'VIP Lounge Entry', 'Gala Dinner Invite', 'Networking Lunch', 'Priority Seating'],
+            recommended: true
+        }
+    ]
+};
+
 const RegisterForm = () => {
+    const navigate = useNavigate();
+    const [step, setStep] = useState(1);
+    const [category, setCategory] = useState<Category>(null);
+    const [selectedPass, setSelectedPass] = useState<PassType>(null);
+    
     const [formData, setFormData] = useState<FormData>({
         fullName: '',
         phoneNumber: '',
@@ -29,15 +99,17 @@ const RegisterForm = () => {
         country: '',
         state: '',
         pincode: '',
-        profession: '',
         collegeName: '',
         companyName: '',
     });
 
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Helper to get current pass details
+    const currentPassDetails = category && selectedPass 
+        ? PASS_OPTIONS[category].find(p => p.id === selectedPass) 
+        : null;
 
     // State options based on country
     const statesByCountry: Record<string, string[]> = {
@@ -46,16 +118,20 @@ const RegisterForm = () => {
         UK: ['England', 'Scotland', 'Wales', 'Northern Ireland'],
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | { target: { name: string; value: string } }) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
             [name]: value,
-            // Clear state when country changes
             ...(name === 'country' ? { state: '' } : {}),
-            // Clear conditional fields when profession changes
-            ...(name === 'profession' && value === 'student' ? { companyName: '' } : {}),
-            ...(name === 'profession' && value === 'professional' ? { collegeName: '' } : {}),
+        }));
+    };
+
+    const handleSelectChange = (name: string, value: string) => {
+        setFormData(prev => ({
+            ...prev,
+            [name]: value,
+            ...(name === 'country' ? { state: '' } : {}),
         }));
     };
 
@@ -64,395 +140,499 @@ const RegisterForm = () => {
         setLoading(true);
         setMessage(null);
 
-        // Validate password match
         if (formData.password !== formData.confirmPassword) {
             setMessage({ type: 'error', text: 'Passwords do not match!' });
             setLoading(false);
             return;
         }
 
-        // Remove confirmPassword before sending
-        const { confirmPassword, ...dataToSend } = formData;
-
         try {
-            const response = await fetch('http://localhost:3000/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(dataToSend),
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Include category and pass info in state
+            navigate('/verify-email', { 
+                state: { 
+                    email: formData.email,
+                    category,
+                    passType: selectedPass
+                } 
             });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                setMessage({ type: 'success', text: 'Registration successful! You can now login with your credentials.' });
-                // Reset form
-                setFormData({
-                    fullName: '',
-                    phoneNumber: '',
-                    email: '',
-                    password: '',
-                    confirmPassword: '',
-                    gender: '',
-                    dateOfBirth: '',
-                    country: '',
-                    state: '',
-                    pincode: '',
-                    profession: '',
-                    collegeName: '',
-                    companyName: '',
-                });
-            } else {
-                setMessage({ type: 'error', text: data.error || 'Registration failed. Please try again.' });
-            }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Network error. Please check your connection and try again.' });
+            setMessage({ type: 'error', text: 'Registration failed. Please try again.' });
         } finally {
             setLoading(false);
         }
     };
 
+    const nextStep = () => setStep(prev => prev + 1);
+    const prevStep = () => setStep(prev => prev - 1);
+
+    const inputStyles = {
+        inputWrapper: "border-black/20 hover:border-rose/50 focus-within:!border-rose",
+        label: "text-black/60",
+        input: "text-black",
+    };
+
     return (
-        <div className="min-h-screen pt-32 pb-20 px-4">
-            <div className="max-w-2xl mx-auto">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="text-center mb-12"
-                >
-                    <h1 className="text-5xl md:text-6xl font-display font-bold mb-4 bg-gradient-to-r from-gold via-purple to-blue bg-clip-text text-transparent">
-                        Register for Conclave
-                    </h1>
-                    <p className="text-lg text-white/70">
-                        Join us at SMEC's Global Innovators Conclave 2026
-                    </p>
-                </motion.div>
+        <div className="min-h-screen pt-28 pb-20 px-4 flex items-center justify-center relative overflow-hidden bg-[#EAEAEA]">
+            
+            {/* Background elements */}
+            <div className="absolute top-[10%] right-[10%] w-96 h-96 bg-rose/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[10%] left-[10%] w-96 h-96 bg-violet/10 rounded-full blur-[120px] pointer-events-none" />
 
-                <motion.form
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    onSubmit={handleSubmit}
-                    className="glass-card p-8 md:p-10 rounded-3xl backdrop-blur-xl bg-white/5 border border-white/10 shadow-2xl"
-                >
-                    {/* Full Name */}
-                    <div className="mb-6">
-                        <label htmlFor="fullName" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                            Full Name <span className="text-gold">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            id="fullName"
-                            name="fullName"
-                            value={formData.fullName}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                            placeholder="Enter your full name"
-                        />
-                    </div>
-
-                    {/* Phone Number */}
-                    <div className="mb-6">
-                        <label htmlFor="phoneNumber" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                            Phone Number <span className="text-gold">*</span>
-                        </label>
-                        <input
-                            type="tel"
-                            id="phoneNumber"
-                            name="phoneNumber"
-                            value={formData.phoneNumber}
-                            onChange={handleChange}
-                            required
-                            pattern="[0-9]{10}"
-                            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                            placeholder="10-digit mobile number"
-                        />
-                    </div>
-
-                    {/* Email */}
-                    <div className="mb-6">
-                        <label htmlFor="email" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                            Email ID <span className="text-gold">*</span>
-                        </label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                            placeholder="your.email@example.com"
-                        />
-                    </div>
-
-                    {/* Password and Confirm Password in a row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        {/* Password */}
-                        <div>
-                            <label htmlFor="password" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                Password <span className="text-gold">*</span>
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    id="password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    required
-                                    minLength={6}
-                                    className="w-full px-4 py-3 pr-10 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                                    placeholder="Min 6 characters"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors"
-                                >
-                                    {showPassword ? '👁️' : '👁️‍🗨️'}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Confirm Password */}
-                        <div>
-                            <label htmlFor="confirmPassword" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                Confirm Password <span className="text-gold">*</span>
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showConfirmPassword ? 'text' : 'password'}
-                                    id="confirmPassword"
-                                    name="confirmPassword"
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                    required
-                                    minLength={6}
-                                    className="w-full px-4 py-3 pr-10 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                                    placeholder="Re-enter password"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors"
-                                >
-                                    {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Gender and DOB in a row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        {/* Gender */}
-                        <div>
-                            <label htmlFor="gender" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                Gender <span className="text-gold">*</span>
-                            </label>
-                            <select
-                                id="gender"
-                                name="gender"
-                                value={formData.gender}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                            >
-                                <option value="" className="bg-bg-primary">Select gender</option>
-                                <option value="male" className="bg-bg-primary">Male</option>
-                                <option value="female" className="bg-bg-primary">Female</option>
-                                <option value="other" className="bg-bg-primary">Other</option>
-                            </select>
-                        </div>
-
-                        {/* Date of Birth */}
-                        <div>
-                            <label htmlFor="dateOfBirth" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                Date of Birth <span className="text-gold">*</span>
-                            </label>
-                            <input
-                                type="date"
-                                id="dateOfBirth"
-                                name="dateOfBirth"
-                                value={formData.dateOfBirth}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Country, State, and Pincode in a row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        {/* Country */}
-                        <div>
-                            <label htmlFor="country" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                Country <span className="text-gold">*</span>
-                            </label>
-                            <select
-                                id="country"
-                                name="country"
-                                value={formData.country}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                            >
-                                <option value="" className="bg-bg-primary">Select country</option>
-                                <option value="India" className="bg-bg-primary">India</option>
-                                <option value="USA" className="bg-bg-primary">USA</option>
-                                <option value="UK" className="bg-bg-primary">UK</option>
-                            </select>
-                        </div>
-
-                        {/* State */}
-                        <div>
-                            <label htmlFor="state" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                State <span className="text-gold">*</span>
-                            </label>
-                            <select
-                                id="state"
-                                name="state"
-                                value={formData.state}
-                                onChange={handleChange}
-                                required
-                                disabled={!formData.country}
-                                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <option value="" className="bg-bg-primary">Select state</option>
-                                {formData.country && statesByCountry[formData.country]?.map(state => (
-                                    <option key={state} value={state} className="bg-bg-primary">{state}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Pincode */}
-                        <div>
-                            <label htmlFor="pincode" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                Pincode <span className="text-gold">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="pincode"
-                                name="pincode"
-                                value={formData.pincode}
-                                onChange={handleChange}
-                                required
-                                pattern="[0-9]{6}"
-                                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                                placeholder="6-digit code"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Profession */}
-                    <div className="mb-6">
-                        <label className="block text-white/90 font-medium mb-3 text-sm uppercase tracking-wide">
-                            Profession <span className="text-gold">*</span>
-                        </label>
-                        <div className="flex gap-6">
-                            <label className="flex items-center cursor-pointer group">
-                                <input
-                                    type="radio"
-                                    name="profession"
-                                    value="student"
-                                    checked={formData.profession === 'student'}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-5 h-5 text-gold border-white/20 focus:ring-gold focus:ring-2 cursor-pointer"
-                                />
-                                <span className="ml-2 text-white/80 group-hover:text-gold transition-colors">Student</span>
-                            </label>
-                            <label className="flex items-center cursor-pointer group">
-                                <input
-                                    type="radio"
-                                    name="profession"
-                                    value="professional"
-                                    checked={formData.profession === 'professional'}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-5 h-5 text-gold border-white/20 focus:ring-gold focus:ring-2 cursor-pointer"
-                                />
-                                <span className="ml-2 text-white/80 group-hover:text-gold transition-colors">Professional</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Conditional Fields */}
-                    {formData.profession === 'student' && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="mb-6"
-                        >
-                            <label htmlFor="collegeName" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                College Name <span className="text-gold">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="collegeName"
-                                name="collegeName"
-                                value={formData.collegeName}
-                                onChange={handleChange}
-                                required={formData.profession === 'student'}
-                                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                                placeholder="Enter your college name"
-                            />
-                        </motion.div>
-                    )}
-
-                    {formData.profession === 'professional' && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="mb-6"
-                        >
-                            <label htmlFor="companyName" className="block text-white/90 font-medium mb-2 text-sm uppercase tracking-wide">
-                                Company Name <span className="text-gold">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="companyName"
-                                name="companyName"
-                                value={formData.companyName}
-                                onChange={handleChange}
-                                required={formData.profession === 'professional'}
-                                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/30 transition-all"
-                                placeholder="Enter your company name"
-                            />
-                        </motion.div>
-                    )}
-
-                    {/* Message */}
-                    {message && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`mb-6 p-4 rounded-xl ${
-                                message.type === 'success'
-                                    ? 'bg-green-500/20 border border-green-500/50 text-green-300'
-                                    : 'bg-red-500/20 border border-red-500/50 text-red-300'
-                            }`}
-                        >
-                            {message.text}
-                        </motion.div>
-                    )}
-
-                    {/* Submit Button */}
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-4 rounded-xl bg-gradient-to-r from-gold via-amber to-orange text-bg-primary font-bold text-lg uppercase tracking-wide hover:shadow-lg hover:shadow-gold/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+            <div className="w-full max-w-5xl relative z-10">
+                
+                {/* Header Section */}
+                <div className="text-center mb-8">
+                    <motion.h1 
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-4xl md:text-5xl font-display font-bold text-black mb-3 tracking-tight"
                     >
-                        {loading ? 'Registering...' : 'Complete Registration'}
-                    </button>
-                </motion.form>
+                        Join the Conclave
+                    </motion.h1>
+                    
+                    {/* Progress Steps */}
+                    <div className="flex items-center justify-center gap-4 mt-6">
+                        {['Category', 'Pass Selection', 'Details'].map((label, idx) => {
+                            const stepNum = idx + 1;
+                            const isActive = step >= stepNum;
+                            const isCurrent = step === stepNum;
+                            
+                            return (
+                                <div key={label} className="flex items-center gap-2">
+                                    <div className={`
+                                        w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
+                                        ${isActive ? 'bg-rose text-white shadow-lg shadow-rose/25' : 'bg-black/5 text-black/40'}
+                                    `}>
+                                        {isActive ? <Check className="w-4 h-4" /> : stepNum}
+                                    </div>
+                                    <span className={`text-sm font-medium ${isCurrent ? 'text-black' : 'text-black/40'} hidden md:block`}>
+                                        {label}
+                                    </span>
+                                    {idx < 2 && <div className="w-12 h-[1px] bg-black/10 hidden md:block" />}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <AnimatePresence mode="wait">
+                    
+                    {/* STEP 1: CATEGORY SELECTION */}
+                    {step === 1 && (
+                        <motion.div
+                            key="step1"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="max-w-3xl mx-auto"
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {[
+                                    { id: 'student', icon: GraduationCap, title: 'Student', desc: 'For robust learning & networking' },
+                                    { id: 'professional', icon: Briefcase, title: 'Professional', desc: 'For industry insights & connections' }
+                                ].map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => {
+                                            setCategory(item.id as Category);
+                                            nextStep();
+                                        }}
+                                        className="group relative bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/40 hover:border-rose/50 transition-all duration-300 hover:shadow-2xl hover:shadow-rose/5 text-left"
+                                    >
+                                        <div className="w-14 h-14 bg-rose/5 rounded-2xl flex items-center justify-center text-rose mb-6 group-hover:scale-110 transition-transform duration-300">
+                                            <item.icon className="w-7 h-7" />
+                                        </div>
+                                        <h3 className="text-2xl font-bold text-black mb-2">{item.title}</h3>
+                                        <p className="text-black/60">{item.desc}</p>
+                                        
+                                        <div className="absolute top-8 right-8 text-black/20 group-hover:text-rose transition-colors">
+                                            <Sparkles className="w-6 h-6" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* STEP 2: PASS SELECTION */}
+                    {step === 2 && category && (
+                        <motion.div
+                            key="step2"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="max-w-4xl mx-auto"
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {PASS_OPTIONS[category].map((pass) => (
+                                    <div 
+                                        key={pass.id}
+                                        className={`
+                                            relative bg-white/80 backdrop-blur-xl rounded-[2rem] border transition-all duration-300 overflow-hidden cursor-pointer
+                                            ${selectedPass === pass.id 
+                                                ? 'border-rose shadow-2xl shadow-rose/10 scale-[1.02]' 
+                                                : 'border-white/40 hover:border-black/20 hover:shadow-xl'}
+                                        `}
+                                        onClick={() => setSelectedPass(pass.id as PassType)}
+                                    >
+                                        {pass.recommended && (
+                                            <div className="bg-gradient-to-r from-rose to-orange-500 text-white text-xs font-bold uppercase tracking-widest py-1 px-4 absolute top-0 right-0 rounded-bl-2xl">
+                                                Most Popular
+                                            </div>
+                                        )}
+                                        
+                                        <div className="p-8">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-black">{pass.name}</h3>
+                                                    <p className="text-sm text-black/50 mt-1">{pass.description}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-2xl font-bold text-rose">₹{pass.price}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3 mt-6 mb-8">
+                                                {pass.features.map((feature, i) => (
+                                                    <div key={i} className="flex items-center gap-3 text-sm text-black/70">
+                                                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                                            <Check className="w-3 h-3 text-green-600" />
+                                                        </div>
+                                                        {feature}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <InteractiveHoverButton 
+                                                onClick={() => {
+                                                    setSelectedPass(pass.id as PassType);
+                                                    nextStep();
+                                                }}
+                                                text={selectedPass === pass.id ? "Selected" : "Select Pass"}
+                                                className={`w-full ${selectedPass === pass.id ? 'bg-black text-white' : ''}`}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <div className="mt-8 flex justify-center">
+                                <button 
+                                    onClick={prevStep}
+                                    className="text-black/40 hover:text-rose transition-colors text-sm font-medium flex items-center gap-2"
+                                >
+                                    <ChevronLeft className="w-4 h-4" /> Change Category
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* STEP 3: DETAILS FORM */}
+                    {step === 3 && (
+                        <motion.div
+                            key="step3"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-white/40 shadow-xl overflow-hidden"
+                        >
+                            <div className="grid grid-cols-1 lg:grid-cols-3">
+                                
+                                {/* Form Area */}
+                                <div className="lg:col-span-2 p-8 md:p-12 border-b lg:border-b-0 lg:border-r border-black/5">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h2 className="text-2xl font-bold text-black">Your Details</h2>
+                                        <button 
+                                            onClick={prevStep}
+                                            className="text-black/40 hover:text-rose transition-colors text-sm"
+                                        >
+                                            Change Pass
+                                        </button>
+                                    </div>
+
+                                    <form onSubmit={handleSubmit} className="space-y-6">
+                                        
+                                        {/* Basic Info */}
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">Full Name</label>
+                                                <Input
+                                                    startContent={<User className="w-4 h-4 text-black/40" />}
+                                                    name="fullName"
+                                                    variant="bordered"
+                                                    placeholder="Enter your full name"
+                                                    value={formData.fullName}
+                                                    onChange={(e) => handleChange(e as any)}
+                                                    required
+                                                    classNames={inputStyles}
+                                                />
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-black/70">Email</label>
+                                                    <Input
+                                                        startContent={<Mail className="w-4 h-4 text-black/40" />}
+                                                        type="email"
+                                                        name="email"
+                                                        variant="bordered"
+                                                        placeholder="john@example.com"
+                                                        value={formData.email}
+                                                        onChange={(e) => handleChange(e as any)}
+                                                        required
+                                                        classNames={inputStyles}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-black/70">Phone Number</label>
+                                                    <Input
+                                                        startContent={<Phone className="w-4 h-4 text-black/40" />}
+                                                        type="tel"
+                                                        name="phoneNumber"
+                                                        variant="bordered"
+                                                        placeholder="+91 98765 43210"
+                                                        value={formData.phoneNumber}
+                                                        onChange={(e) => handleChange(e as any)}
+                                                        required
+                                                        classNames={inputStyles}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Additional Info */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">Gender</label>
+                                                <Select 
+                                                    variant="bordered" 
+                                                    placeholder="Select gender"
+                                                    selectedKeys={formData.gender ? [formData.gender] : []}
+                                                    onSelectionChange={(keys) => handleSelectChange('gender', Array.from(keys)[0] as string)}
+                                                    classNames={{ trigger: inputStyles.inputWrapper }}
+                                                >
+                                                    <SelectItem key="male">Male</SelectItem>
+                                                    <SelectItem key="female">Female</SelectItem>
+                                                    <SelectItem key="other">Other</SelectItem>
+                                                </Select>
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">Date of Birth</label>
+                                                <Input
+                                                    type="date"
+                                                    name="dateOfBirth"
+                                                    variant="bordered"
+                                                    value={formData.dateOfBirth}
+                                                    onChange={(e) => handleChange(e as any)}
+                                                    required
+                                                    classNames={inputStyles}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Category Specific */}
+                                        {category === 'student' ? (
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">College / University</label>
+                                                <Input
+                                                    startContent={<GraduationCap className="w-4 h-4 text-black/40" />}
+                                                    name="collegeName"
+                                                    variant="bordered"
+                                                    placeholder="Enter college name"
+                                                    value={formData.collegeName}
+                                                    onChange={(e) => handleChange(e as any)}
+                                                    required
+                                                    classNames={inputStyles}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">Company / Organization</label>
+                                                <Input
+                                                    startContent={<Briefcase className="w-4 h-4 text-black/40" />}
+                                                    name="companyName"
+                                                    variant="bordered"
+                                                    placeholder="Enter company name"
+                                                    value={formData.companyName}
+                                                    onChange={(e) => handleChange(e as any)}
+                                                    required
+                                                    classNames={inputStyles}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Address */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">Country</label>
+                                                <Select
+                                                    variant="bordered"
+                                                    placeholder="Select country"
+                                                    selectedKeys={formData.country ? [formData.country] : []}
+                                                    onSelectionChange={(keys) => handleSelectChange('country', Array.from(keys)[0] as string)}
+                                                    classNames={{ trigger: inputStyles.inputWrapper }}
+                                                >
+                                                    <SelectItem key="India">India</SelectItem>
+                                                    <SelectItem key="USA">USA</SelectItem>
+                                                    <SelectItem key="UK">UK</SelectItem>
+                                                </Select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">State</label>
+                                                <Select
+                                                    variant="bordered"
+                                                    placeholder="Select state"
+                                                    selectedKeys={formData.state ? [formData.state] : []}
+                                                    onSelectionChange={(keys) => handleSelectChange('state', Array.from(keys)[0] as string)}
+                                                    isDisabled={!formData.country}
+                                                    classNames={{ trigger: inputStyles.inputWrapper }}
+                                                >
+                                                    {(formData.country && statesByCountry[formData.country]) ? 
+                                                        statesByCountry[formData.country].map((state) => (
+                                                            <SelectItem key={state}>{state}</SelectItem>
+                                                        )) : []
+                                                    }
+                                                </Select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">Pincode</label>
+                                                <Input
+                                                    name="pincode"
+                                                    variant="bordered"
+                                                    placeholder="Enter pincode"
+                                                    value={formData.pincode}
+                                                    onChange={(e) => handleChange(e as any)}
+                                                    required
+                                                    classNames={inputStyles}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Password */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">Password</label>
+                                                <Input
+                                                    type="password"
+                                                    name="password"
+                                                    variant="bordered"
+                                                    placeholder="Create password"
+                                                    value={formData.password}
+                                                    onChange={(e) => handleChange(e as any)}
+                                                    required
+                                                    classNames={inputStyles}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-black/70">Confirm Password</label>
+                                                <Input
+                                                    type="password"
+                                                    name="confirmPassword"
+                                                    variant="bordered"
+                                                    placeholder="Confirm password"
+                                                    value={formData.confirmPassword}
+                                                    onChange={(e) => handleChange(e as any)}
+                                                    required
+                                                    classNames={inputStyles}
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        {message && (
+                                            <div className={`text-sm p-3 rounded-lg ${message.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}>
+                                                {message.text}
+                                            </div>
+                                        )}
+
+                                        <InteractiveHoverButton 
+                                            type="submit"
+                                            disabled={loading}
+                                            text={loading ? "Processing..." : "Proceed to Payment"}
+                                            className="w-full mt-4"
+                                        />
+                                    </form>
+                                </div>
+
+                                {/* Summary / Ticket Preview */}
+                                <div className="bg-black/5 p-8 md:p-12 relative overflow-hidden">
+                                     {/* Ticket Visual */}
+                                     {currentPassDetails && (
+                                        <div className="sticky top-8">
+                                            <h3 className="text-black/40 font-bold uppercase tracking-widest text-xs mb-6">Booking Summary</h3>
+                                            
+                                            <div className="bg-white rounded-3xl overflow-hidden shadow-2xl relative">
+                                                {/* Header */}
+                                                <div className="h-32 bg-black flex items-center justify-center relative overflow-hidden">
+                                                    <div className="absolute inset-0 opacity-30 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%,100%_100%] animate-[shimmer_3s_infinite]" />
+                                                    <div className="text-center z-10">
+                                                        <div className="text-white/50 text-xs font-bold uppercase tracking-[0.2em] mb-1">SMEC 2026</div>
+                                                        <div className="text-white text-2xl font-display font-bold">{category?.toUpperCase()}</div>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Dotted Divider */}
+                                                <div className="relative h-8 -mt-4 bg-white">
+                                                    <div className="absolute top-0 left-0 w-8 h-8 rounded-full bg-[#f2f2f2] -translate-x-1/2 -translate-y-1/2" />
+                                                    <div className="absolute top-0 right-0 w-8 h-8 rounded-full bg-[#f2f2f2] translate-x-1/2 -translate-y-1/2" />
+                                                    <div className="border-b-2 border-dashed border-black/10 mx-8 mt-4" />
+                                                </div>
+
+                                                {/* Content */}
+                                                <div className="p-8 pt-0 space-y-6">
+                                                    
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs text-black/40 font-bold uppercase tracking-wider">Pass Type</p>
+                                                        <p className="text-xl font-bold text-black">{currentPassDetails.name}</p>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="space-y-1">
+                                                            <p className="text-xs text-black/40 font-bold uppercase tracking-wider">Date</p>
+                                                            <div className="flex items-center gap-2 text-black/80 font-medium">
+                                                                <Calendar className="w-4 h-4" /> 
+                                                                <span>Jan 24-25, 2026</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1 text-right">
+                                                            <p className="text-xs text-black/40 font-bold uppercase tracking-wider">Price</p>
+                                                            <p className="text-xl font-bold text-rose">₹{currentPassDetails.price}</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {formData.fullName && (
+                                                        <div className="p-4 bg-black/5 rounded-xl flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center text-black/50">
+                                                                <User className="w-5 h-5" />
+                                                            </div>
+                                                            <div className="overflow-hidden">
+                                                                <p className="text-xs text-black/40 font-bold uppercase">Attendee</p>
+                                                                <p className="text-sm font-bold text-black truncate">{formData.fullName}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                </div>
+                                                
+                                                <div className="bg-black/5 p-4 text-center">
+                                                    <p className="text-xs text-black/40">Includes {currentPassDetails.features.length} Premium Features</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-8 text-center text-xs text-black/40 max-w-[200px] mx-auto">
+                                                <p>By proceeding, you agree to our Terms of Service & Privacy Policy.</p>
+                                            </div>
+                                        </div>
+                                     )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                </AnimatePresence>
             </div>
         </div>
     );
